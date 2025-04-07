@@ -1,0 +1,111 @@
+package Printable(Printable(..), mkStringPrinter) where
+
+import Vector
+import GetPut
+import UART
+
+class Printable a where
+  mkPrinter :: (IsModule m c) => TxUART -> m (Put a)
+
+instance Printable Char where
+  mkPrinter uart = module
+    let ascii :: Vector 256 (Bit 8) = genWith fromInteger
+
+    interface
+      put char = do
+        uart.put (ascii !! charToInteger char)
+
+instance (Printable a, Printable b, Bits a sizeA, Bits b sizeB) => Printable (a, b) where
+  mkPrinter uart = module
+    printerA :: Put a <- mkPrinter uart
+    printerB :: Put b <- mkPrinter uart
+    state :: Reg (Bit 8) <- mkReg 0
+    stateA :: Reg a <- mkReg _
+    stateB :: Reg b <- mkReg _
+
+    rules
+      "print (": when state == 1 ==> do
+        uart.put 40
+        state := 2
+
+      "print a": when state == 2 ==> do
+        printerA.put stateA
+        state := 3
+
+      "print ,": when state == 3 ==> do
+        uart.put 44
+        state := 4
+
+      "print b": when state == 4 ==> do
+        printerB.put stateB
+        state := 5
+
+      "print )": when state == 5 ==> do
+        uart.put 41
+        state := 0
+
+    interface
+      put (x,y) = do
+          state := 1
+          stateA := x
+          stateB := y
+        when (state == 0)
+
+mkStringPrinter :: (IsModule m c) => TxUART -> String -> m (Put void)
+mkStringPrinter uart str = module
+  printer :: Put Char <- mkPrinter uart
+  counter :: Reg (Maybe (Bit 32)) <- mkReg Nothing
+  let chars :: List Char = stringToCharList str
+
+  rules
+    "print char": when isJust counter ==> do
+      let x = unJust counter
+      if x < fromInteger (stringLength str) then do
+        printer.put (List.select chars x)
+        counter := Just (x+1)
+      else counter := Nothing
+
+  interface
+    put _ = do
+        counter := Just 0
+      when (counter == Invalid)
+
+instance (Mul k 4 n) => Printable (Bit n) where
+  mkPrinter uart = module
+    digits :: Vector k (Reg (Bit 4)) <- replicateM (mkReg _)
+    let ascii :: Vector 16 (Bit 8) =
+          genWith (compose fromInteger (compose charToInteger integerToHexDigit))
+
+    index :: Reg (Maybe (Bit (TLog k))) <- mkReg Nothing
+    must_write_0 :: Reg Bool <- mkReg False
+    must_write_x :: Reg Bool <- mkReg False
+    must_write_n :: Reg Bool <- mkReg False
+
+    rules
+      "print digit":when isJust index ==> do
+        let i = unJust index
+        let digit :: Bit 4 = (select digits i)._read
+        uart.put (select ascii digit)
+        index := if i == 0 then Nothing else Just (i-1)
+        must_write_n := i == 0
+
+      "write 0": when must_write_0 ==> do
+        uart.put 48
+        must_write_0 := False
+        must_write_x := True
+
+      "write x": when must_write_x ==> do
+        index := Just $ fromInteger $ (valueOf k) - 1
+        must_write_x := False
+        uart.put 120
+
+      "write n": when must_write_n ==> do
+        must_write_n := False
+        uart.put 10
+
+    interface
+      put x = do
+          must_write_0 := True
+          let vector :: Vector k (Bit 4) = unpack x
+          writeVReg digits vector
+        when (index == Nothing && not must_write_0 && not must_write_x && not must_write_n)
