@@ -19,6 +19,11 @@ set_property -dict {PACKAGE_PIN F15 IOSTANDARD LVCMOS33} [get_ports {btn[3]}]
 set_property -dict {PACKAGE_PIN AA19 IOSTANDARD LVCMOS33} [get_ports tx]
 set_property -dict {PACKAGE_PIN V18 IOSTANDARD LVCMOS33} [get_ports rx]
 
+## HID port
+set_property -dict {PACKAGE_PIN W17 IOSTANDARD LVCMOS33 PULLUP TRUE} [get_ports ps2_clk]
+set_property -dict {PACKAGE_PIN N13 IOSTANDARD LVCMOS33 PULLUP TRUE} [get_ports ps2_data]
+
+
 set_property SLEW FAST [get_ports {ddr3_dq[0]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr3_dq[0]}]
 set_property IOSTANDARD SSTL15 [get_ports {ddr3_dq[0]}]

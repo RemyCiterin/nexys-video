@@ -23,6 +23,8 @@ module nexysvideo_ddr3 (
   //Debug LEDs
   output reg[7:0] led,
 //  input wire[3:0] btn
+  input wire ps2_clk,
+  input wire ps2_data
 );
 
   wire i_controller_clk, i_ddr3_clk, i_ref_clk, i_ddr3_clk_90;
@@ -104,7 +106,7 @@ module nexysvideo_ddr3 (
     .clk_in1(i_clk)
   );
 
-  //reg RST_N = 1;
+  reg RST_N = 1;
 
   always @(posedge i_controller_clk) begin
     RST_N <= !i_rst && clk_locked ? 1 : 0;
@@ -115,7 +117,9 @@ module nexysvideo_ddr3 (
     .RST_N(RST_N),
     .uart_rx(rx),
     .uart_tx(tx),
-    .led(led)
+    .led(led),
+    .ps2_clk(ps2_clk),
+    .ps2_data(ps2_data)
   );
 
 //   //UART TX/RXmodule from https://github.com/ben-marshall/uart

@@ -71,7 +71,7 @@ This register type have the following constraints:
 
 module mkEhr#(t init) (Ehr#(n, t)) provisos(Bits#(t, tWidth));
   Vector#(n, Reg#(Bool)) order <- replicateM(mkRevertingVirtualReg(False));
-  Vector#(n, RWire#(t)) wires <- replicateM(mkRWire);
+  Vector#(n, RWire#(t)) wires <- replicateM(mkUnsafeRWire);
   Reg#(t) register <- mkReg(init);
 
   Vector#(n, Reg#(t)) ifc = newVector;
@@ -110,4 +110,22 @@ module mkEhr#(t init) (Ehr#(n, t)) provisos(Bits#(t, tWidth));
   end
 
   return ifc;
+endmodule
+
+interface FWire#(type t);
+  method Bool valid;
+  method t read;
+endinterface
+
+module mkFWire#(t value) (FWire#(t)) provisos(Bits#(t,tW));
+  Wire#(Bool) present <-mkDWire(False);
+  Wire#(t) val <- mkDWire(?);
+
+  rule ehr_canon;
+    present <= True;
+    val <= value;
+  endrule
+
+  method t read = val;
+  method Bool valid = present;
 endmodule

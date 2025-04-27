@@ -38,7 +38,7 @@ compile:
 
 .PHONY: program
 program: #build/${PROJECT}.bit
-	openFPGALoader --board nexysVideo --bitstream build/${PROJECT}.bit
+	sudo openFPGALoader --board nexysVideo --bitstream build/${PROJECT}.bit
 
 yosys:
 	yosys -q -p \

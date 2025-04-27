@@ -80,6 +80,7 @@ instance (Mul k 4 n) => Printable (Bit n) where
     must_write_0 :: Reg Bool <- mkReg False
     must_write_x :: Reg Bool <- mkReg False
     must_write_n :: Reg Bool <- mkReg False
+    must_write_r :: Reg Bool <- mkReg False
 
     rules
       "print digit":when isJust index ==> do
@@ -101,11 +102,16 @@ instance (Mul k 4 n) => Printable (Bit n) where
 
       "write n": when must_write_n ==> do
         must_write_n := False
+        must_write_r := True
         uart.put 10
+
+      "write r": when must_write_r ==> do
+        must_write_r := False
+        uart.put 13
 
     interface
       put x = do
           must_write_0 := True
           let vector :: Vector k (Bit 4) = unpack x
           writeVReg digits vector
-        when (index == Nothing && not must_write_0 && not must_write_x && not must_write_n)
+        when (index == Nothing && not must_write_0 && not must_write_x && not must_write_n && not must_write_r)
